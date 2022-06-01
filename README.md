@@ -2,6 +2,7 @@
 
 This is an example project for setting upp Traefik with oauth2-proxy for simple authentication and authorization
 
+- With one oauth2-proxy callback for all subdomains.
 - With a [hack](https://github.com/oauth2-proxy/oauth2-proxy/issues/1297) that enables one callback url only, see [sign in template](oauth_templates/sign_in.html)
 - With customized login page, see [docker-compose.yml](docker-compose.yml)
 - With additional security headers
