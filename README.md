@@ -28,11 +28,11 @@ On linux/Mac it is `/etc/hosts`, add this line to the file:
 
 ## Prerequisite: Google auth
 
-Currently the project supports Google OIDC.
+Currently the project supports Google OIDC, see <https://oauth2-proxy.github.io/oauth2-proxy/docs/configuration/oauth_provider#google-auth-provider> for instructions on how to set it up.
 
 When setting up your credentials, make sure you add <https://oauth.local.se/oauth2/callback> to Authorized redirect URIs
 
-You can either set the environment variables yourself, or create a .env file with the contents
+Then you can either set the environment variables yourself, or create a .env file with the contents
 
 ```bash
 GOOGLE_CLIENT_ID=<your google id>
