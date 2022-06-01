@@ -12,6 +12,7 @@ services:
       # So that Traefik can listen to the Docker events
       - /var/run/docker.sock:/var/run/docker.sock
       - ./traefik.yml:/etc/traefik/traefik.yml
+      - ./traefik-dynamic.yml:/etc/traefik/traefik-dynamic.yml
     labels:
       "traefik.enable": "true"
       "traefik.http.routers.dashboard.rule": "Host(`traefik.local.se`)"
@@ -71,7 +72,6 @@ services:
       # Proposed headers from https://oauth2-proxy.github.io/oauth2-proxy/docs/configuration/overview/#forwardauth-with-401-errors-middleware
       # And https://levelup.gitconnected.com/harden-your-website-with-traefik-and-security-headers-a595844c4f1b
       "traefik.http.middlewares.security-headers.headers.stsSeconds": "315360000"
-      "traefik.http.middlewares.security-headers.headers.sslRedirect": "true"
       "traefik.http.middlewares.security-headers.headers.browserXssFilter": "true"
       "traefik.http.middlewares.security-headers.headers.contentTypeNosniff": "true"
       "traefik.http.middlewares.security-headers.headers.forceSTSHeader": "true"

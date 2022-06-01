@@ -1,0 +1,7 @@
+# Prevent TLS 1.0 and TLS 1.1, see http://www.rfc-editor.org/info/rfc7525
+tls:
+  options:
+    default:
+      minVersion: VersionTLS12
+      # We cannot use sniStrict with self-signed certs, but you should in production!
+      # sniStrict: true

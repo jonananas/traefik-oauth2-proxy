@@ -63,3 +63,17 @@ There are several extra endpoints like, /oauth2/sign_out which can be found at [
 - [Oauth2-proxy docs](https://oauth2-proxy.github.io/oauth2-proxy/docs/)
 - [Oauth2-proxy docker binaries](https://quay.io/repository/oauth2-proxy/oauth2-proxy?tab=tags&tag=latest)
 - [Oauth2-proxy source](https://github.com/oauth2-proxy/oauth2-proxy)
+
+## TLS
+
+In order to get A-rating on SSLabs, you need to disable TLS 1.0 and 1.1.
+As noted [here](https://github.com/traefik/traefik/issues/5507) it can only be done in the dynamic configuration file using the file provider.
+
+Test with:
+
+```bash
+openssl s_client -connect traefik.local.se:443 -tls1
+# Should fail with something like: ...error... tlsv1 alert protocol version ...
+openssl s_client -connect traefik.local.se:443 -tls1_2 | grep CONNECTED
+# Should succeed with CONNECTED
+```
