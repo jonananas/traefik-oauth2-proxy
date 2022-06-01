@@ -33,3 +33,10 @@ entryPoints:
 
   websecure:
     address: ":443"
+
+tls:
+  # Prevent TLS 1.0 and TLS 1.1, see http://www.rfc-editor.org/info/rfc7525
+  options:
+    default:
+      minVersion: VersionTLS12
+      sniStrict: true        
