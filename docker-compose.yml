@@ -1,0 +1,98 @@
+version: "3.9"
+
+# NOTE: See README.md for how to setup local.se.
+services:
+  traefik:
+    # Available at https://traefik.local.se/dashboard/#/
+    image: traefik:v2.6
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # So that Traefik can listen to the Docker events
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./traefik.yml:/etc/traefik/traefik.yml
+    labels:
+      "traefik.enable": "true"
+      "traefik.http.routers.dashboard.rule": "Host(`traefik.local.se`)"
+      "traefik.http.routers.dashboard.service": "api@internal"
+      "traefik.http.routers.dashboard.tls": "true"
+      "traefik.http.routers.dashboard.entrypoints": "websecure"
+
+  oauth:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.2.1
+    volumes:
+      - "./oauth_templates:/templates"
+    environment:
+      # See https://oauth2-proxy.github.io/oauth2-proxy/docs/configuration/overview/#command-line-options
+      - OAUTH2_PROXY_CLIENT_ID=$GOOGLE_CLIENT_ID
+      - OAUTH2_PROXY_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET
+      # Allow the cookie to be used for the whole domain
+      - "OAUTH2_PROXY_COOKIE_DOMAINS=.local.se"
+      - "OAUTH2_PROXY_COOKIE_REFRESH=1h"
+      - "OAUTH2_PROXY_COOKIE_SECURE=true"
+      # Generate a real secret for production!
+      - "OAUTH2_PROXY_COOKIE_SECRET= should add this"
+      - "OAUTH2_PROXY_COOKIE_SAMESITE="
+      # Only allow validated users with this email domain (can be authorized towards google group as well)
+      - "OAUTH2_PROXY_EMAIL_DOMAINS=.se"
+      # Customize login page - next four
+      - "OAUTH2_PROXY_CUSTOM_TEMPLATES_DIR=/templates"
+      - "OAUTH2_PROXY_CUSTOM_SIGN_IN_LOGO=/templates/logo.png"
+      - "OAUTH2_PROXY_BANNER=Welcome to ACME Cloud Services"
+      - "OAUTH2_PROXY_FOOTER=-"
+      - "OAUTH2_PROXY_HTTP_ADDRESS=0.0.0.0:4180"
+      - "OAUTH2_PROXY_PASS_BASIC_AUTH=false"
+      - "OAUTH2_PROXY_PASS_USER_HEADERS=true"
+      - "OAUTH2_PROXY_PROVIDER=google"
+      - "OAUTH2_PROXY_REVERSE_PROXY=true"
+      - "OAUTH2_PROXY_SET_AUTHORIZATION_HEADER=true"
+      - "OAUTH2_PROXY_SET_XAUTHREQUEST=true"
+      - "OAUTH2_PROXY_WHITELIST_DOMAINS=.local.se"
+      - "OAUTH2_PROXY_INSECURE_OIDC_SKIP_NONCE=false"
+      - "OAUTH2_PROXY_REDIRECT_URL=https://oauth.local.se/oauth2/callback"
+    labels:
+      "traefik.enable": "true"
+      "traefik.http.middlewares.oauth-verify.forwardAuth.address": "http://oauth:4180/oauth2/auth"
+      "traefik.http.middlewares.oauth-verify.forwardAuth.trustForwardHeader": "true"
+      "traefik.http.middlewares.oauth-verify.forwardAuth.authResponseHeaders": "X-Auth-Request-User,X-Auth-Request-Email,Set-Cookie,X-Auth-Request-Access-Token,Authorization"
+
+      "traefik.http.middlewares.oauth-signin.errors.service": "oauth"
+      "traefik.http.middlewares.oauth-signin.errors.status": "401-403"
+      "traefik.http.middlewares.oauth-signin.errors.query": "/oauth2/sign_in"
+      "traefik.http.routers.oauth.entrypoints": "websecure"
+      "traefik.http.routers.oauth.tls": "true"
+      # Provide /oauth2/start?rd=... etc to all subdomains
+      "traefik.http.routers.oauth.rule": "(HostRegexp(`{subdomains:.*}local.se`) || Host(`local.se`)) && PathPrefix(`/oauth2`)"
+      "traefik.http.routers.oauth.service": "oauth"
+      "traefik.http.routers.oauth.middlewares": "auth-headers"
+      "traefik.http.services.oauth.loadbalancer.server.port": "4180"
+
+      # Proposed headers from https://oauth2-proxy.github.io/oauth2-proxy/docs/configuration/overview/#forwardauth-with-401-errors-middleware
+      "traefik.http.middlewares.auth-headers.headers.stsSeconds": "315360000"
+      "traefik.http.middlewares.auth-headers.headers.browserXssFilter": "true"
+      "traefik.http.middlewares.auth-headers.headers.contentTypeNosniff": "true"
+      "traefik.http.middlewares.auth-headers.headers.forceSTSHeader": "true"
+      "traefik.http.middlewares.auth-headers.headers.stsIncludeSubdomains": "true"
+      "traefik.http.middlewares.auth-headers.headers.stsPreload": "true"
+      "traefik.http.middlewares.auth-headers.headers.frameDeny": "true"
+
+  whoami:
+    image: "containous/whoami"
+    labels:
+      "traefik.enable": "true"
+      "traefik.http.routers.whoami.rule": "Host(`whoami.local.se`)"
+      "traefik.http.routers.whoami.entrypoints": "websecure"
+      "traefik.http.routers.whoami.tls": "true"
+      "traefik.http.routers.whoami.middlewares": "oauth-signin,oauth-verify"
+      "traefik.http.services.whoami.loadbalancer.server.port": "80"
+
+  catapp:
+     image: mikesir87/cats:1.0
+     labels:
+       "traefik.enable": "true"
+       "traefik.http.routers.catapp.rule": "Host(`catapp.local.se`)"
+       "traefik.http.routers.catapp.entrypoints": "websecure"
+       "traefik.http.routers.catapp.tls": "true"
+       "traefik.http.routers.catapp.middlewares": "oauth-signin,oauth-verify"
+       "traefik.http.services.catapp.loadbalancer.server.port": "5000"
