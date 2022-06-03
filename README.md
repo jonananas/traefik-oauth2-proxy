@@ -2,10 +2,10 @@
 
 This is an example project for setting upp Traefik with oauth2-proxy for simple authentication and authorization
 
-- With one oauth2-proxy callback for all subdomains.
+- With one oauth2-proxy callback for all subdomains, i.e. [Overlay Mode](#overlay-mode)
 - With a [hack](https://github.com/oauth2-proxy/oauth2-proxy/issues/1297) that enables one callback url only, see [sign in template](oauth_templates/sign_in.html)
-- With customized login page, see [docker-compose.yml](docker-compose.yml)
-- With additional security headers
+- With [customized login page](#customized-loginpage), see [docker-compose.yml](docker-compose.yml)
+- With [additional security headers](#tls) to give A-rating on SSLabs
 
 ![layout](./traefik.drawio.svg)
 
@@ -58,16 +58,56 @@ Applications can get information about the user from
 
 There are several extra endpoints like, /oauth2/sign_out which can be found at [endpoints](https://oauth2-proxy.github.io/oauth2-proxy/docs/features/endpoints)
 
-### Ouath2-proxy links
+## Ouath2-proxy links
 
 - [Oauth2-proxy docs](https://oauth2-proxy.github.io/oauth2-proxy/docs/)
 - [Oauth2-proxy docker binaries](https://quay.io/repository/oauth2-proxy/oauth2-proxy?tab=tags&tag=latest)
 - [Oauth2-proxy source](https://github.com/oauth2-proxy/oauth2-proxy)
 
+## Overlay Mode
+
+With Oauth2-proxy v7.2.1, each subdomain covered by traefik needs their own callback from the OIDC IDP. (At least I could not figure out how to configure one for all subdomains).  
+The cause is that the rd parameter in `/oauth2/sign_in` is set to a relative path instead of absolute, e.g 
+
+- from `sub1.example.com`, `rd=/`
+  - callback has to be `sub1.example.com/oauth2/callback`
+- from `sub1.example.com/path`, `rd=/path`
+  - callback has to be `sub1.example.com/oauth2/callback`
+- from `sub2.example.com/path`, `rd=/path`
+  - callback has to be `sub2.example.com/oauth2/callback`
+
+This means you need to register a new callback url with Google OIDC each time you add a subdomain.
+It is possible to instead use what is described as Overlay Mode in [thomseddon/traefik-forward-auth](https://github.com/thomseddon/traefik-forward-auth#overlay-mode) where you only have one callback, and it redirects to the respective subdomain after cookie validation. This currently requires a a js hack in `/ouath2/sign_in`.
+
+- Copy `error.html`, `robots.txt`, and `sign_in_html` from <https://github.com/oauth2-proxy/oauth2-proxy/tree/master/pkg/app/pagewriter> to a template directory
+- Make that directory available to Oauth2-proxy, e.g. as a Docker Volume
+- Set `OAUTH2_PROXY_CUSTOM_TEMPLATES_DIR=/templates`
+- Add the js hack to [sign_in.html](oauth_templates/sign_in.html):
+
+```javascript
+(function() {
+var inputs = document.getElementsByName('rd');
+for (var i = 0; i < inputs.length; i++)
+    inputs[i].value = window.location;
+})();
+```
+
+## Customized LoginPage
+
+You can customize logo, banner and footer of `oauth2/sign_in` by using
+
+```dockerfile
+- "OAUTH2_PROXY_CUSTOM_SIGN_IN_LOGO=/templates/logo.png"
+- "OAUTH2_PROXY_BANNER=Welcome to ACME Cloud Services"
+- "OAUTH2_PROXY_FOOTER=-"
+```
+
+You can also use the templating described in [Overlay Mode](#overlay-mode) to modify sign_in and error completely.
+
 ## TLS
 
 In order to get A-rating on SSLabs, you need to disable TLS 1.0 and 1.1.
-As noted [here](https://github.com/traefik/traefik/issues/5507) it can only be done in the dynamic configuration file using the file provider.
+As noted [here](https://github.com/traefik/traefik/issues/5507) it can only be done in the [dynamic configuration file](traefik-dynamic.yml) using the file provider.
 
 Test with:
 
@@ -77,3 +117,7 @@ openssl s_client -connect traefik.local.se:443 -tls1
 openssl s_client -connect traefik.local.se:443 -tls1_2 | grep CONNECTED
 # Should succeed with CONNECTED
 ```
+
+## Suggested reading
+
+- <https://www.benjaminrancourt.ca/a-complete-traefik-configuration/> is an excellent complete setup example!

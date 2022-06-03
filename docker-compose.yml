@@ -66,18 +66,8 @@ services:
       # Provide /oauth2/start?rd=... etc to all subdomains
       "traefik.http.routers.oauth.rule": "(HostRegexp(`{subdomains:.*}local.se`) || Host(`local.se`)) && PathPrefix(`/oauth2`)"
       "traefik.http.routers.oauth.service": "oauth"
-      "traefik.http.routers.oauth.middlewares": "security-headers"
+      "traefik.http.routers.oauth.middlewares": "secure-and-gzip@file"
       "traefik.http.services.oauth.loadbalancer.server.port": "4180"
-
-      # Proposed headers from https://oauth2-proxy.github.io/oauth2-proxy/docs/configuration/overview/#forwardauth-with-401-errors-middleware
-      # And https://levelup.gitconnected.com/harden-your-website-with-traefik-and-security-headers-a595844c4f1b
-      "traefik.http.middlewares.security-headers.headers.stsSeconds": "315360000"
-      "traefik.http.middlewares.security-headers.headers.browserXssFilter": "true"
-      "traefik.http.middlewares.security-headers.headers.contentTypeNosniff": "true"
-      "traefik.http.middlewares.security-headers.headers.forceSTSHeader": "true"
-      "traefik.http.middlewares.security-headers.headers.stsIncludeSubdomains": "true"
-      "traefik.http.middlewares.security-headers.headers.stsPreload": "true"
-      "traefik.http.middlewares.security-headers.headers.frameDeny": "true"
 
   whoami:
     image: "containous/whoami"
@@ -86,7 +76,7 @@ services:
       "traefik.http.routers.whoami.rule": "Host(`whoami.local.se`)"
       "traefik.http.routers.whoami.entrypoints": "websecure"
       "traefik.http.routers.whoami.tls": "true"
-      "traefik.http.routers.whoami.middlewares": "oauth-signin,oauth-verify,security-headers"
+      "traefik.http.routers.whoami.middlewares": "oauth-signin,oauth-verify,secure-and-gzip@file"
       "traefik.http.services.whoami.loadbalancer.server.port": "80"
 
   catapp:
@@ -96,5 +86,5 @@ services:
        "traefik.http.routers.catapp.rule": "Host(`catapp.local.se`)"
        "traefik.http.routers.catapp.entrypoints": "websecure"
        "traefik.http.routers.catapp.tls": "true"
-       "traefik.http.routers.catapp.middlewares": "oauth-signin,oauth-verify,security-headers"
+       "traefik.http.routers.catapp.middlewares": "oauth-signin,oauth-verify,secure-and-gzip@file"
        "traefik.http.services.catapp.loadbalancer.server.port": "5000"

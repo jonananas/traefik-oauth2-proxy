@@ -5,3 +5,38 @@ tls:
       minVersion: VersionTLS12
       # We cannot use sniStrict with self-signed certs, but you should in production!
       # sniStrict: true
+
+# From https://www.benjaminrancourt.ca/a-complete-traefik-configuration/
+http:
+  middlewares:
+    # Recommended default middleware for most of the services
+    # Use with traefik.http.routers.myRouter.middlewares: "default@file"
+    # Equivalent of traefik.http.routers.myRouter.middlewares: "default-security-headers@file,error-pages@file,gzip@file"
+    secure-and-gzip:
+      chain:
+        middlewares:
+          - security-headers
+          - gzip
+
+    # Add automatically some security headers
+    # Proposed headers from https://oauth2-proxy.github.io/oauth2-proxy/docs/configuration/overview/#forwardauth-with-401-errors-middleware
+    # and https://levelup.gitconnected.com/harden-your-website-with-traefik-and-security-headers-a595844c4f1b
+    # Use with traefik.http.routers.myRouter.middlewares: "security-headers@file"
+    security-headers:
+      headers:
+        browserXssFilter: true                            # X-XSS-Protection=1; mode=block
+        contentTypeNosniff: true                          # X-Content-Type-Options=nosniff
+        forceSTSHeader: true                              # Add the Strict-Transport-Security header even when the connection is HTTP
+        frameDeny: true                                   # X-Frame-Options=deny
+        referrerPolicy: "strict-origin-when-cross-origin"
+        stsIncludeSubdomains: true                        # Add includeSubdomains to the Strict-Transport-Security header
+        stsPreload: true                                  # Add preload flag appended to the Strict-Transport-Security header
+        stsSeconds: 63072000                              # Set the max-age of the Strict-Transport-Security header (63072000 = 2 years)
+
+    # Enables the GZIP compression (https://docs.traefik.io/middlewares/compress/)
+    #   if the response body is larger than 1400 bytes
+    #   if the Accept-Encoding request header contains gzip
+    #   if the response is not already compressed (Content-Encoding is not set)
+    # Use with traefik.http.routers.myRouter.middlewares: "gzip@file"
+    gzip:
+      compress: {}
